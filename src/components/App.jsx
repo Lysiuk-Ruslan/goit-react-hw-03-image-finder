@@ -1,107 +1,123 @@
-import React, { Component } from 'react';
-import { ImageGallery } from './ImageGallery/ImageGallery';
-import { SearchBar } from './Searchbar/Searchbar';
-import { fetchPhotos } from '../api';
-import { Loading } from './Loader/Loader';
-import { LoadMoreBtn } from './App.styled';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { Component } from 'react';
+import imagesApi from '../services/PixabayApi';
+import Searchbar from './Searchbar/Searchbar';
+import ImageGallery from './ImageGallery/ImageGallery';
+import ImageGalleryItem from './ImageGalleryItem/ImageGalleryItem';
+import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
+import Button from './Button/Button';
+
+const Status = {
+  IDLE: 'idle',
+  PENDING: 'pending',
+  RESOLVED: 'resolved',
+  REJECTED: 'rejected',
+};
 
 export default class App extends Component {
   state = {
-    allPhotos: [],
+    images: [],
     query: '',
+    status: Status.IDLE,
+    imageId: null,
     page: 1,
-    totalPages: 0,
-    isLoading: false,
-    showModal: false,
-    shownBigImgId: '',
+    showButton: false,
+    error: null,
   };
 
-  async componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-    if (query !== prevState.query || page !== prevState.page) {
-      try {
-        this.setState({ isLoading: true });
-        const { query, page } = this.state;
-        const arrOfPhotos = await fetchPhotos(query, page);
-        if (arrOfPhotos.hits.length === 0) {
-          toast.info('Sorry, we did not find any images:( Try another word');
-        }
-        this.setState(({ allPhotos }) => ({
-          allPhotos: [...allPhotos, ...arrOfPhotos.hits],
-          totalPages: Math.ceil(arrOfPhotos.totalHits / 12),
-        }));
-      } catch {
-        toast.error('Something went wrong! Please try again!');
-      } finally {
-        this.setState({ isLoading: false });
-      }
+  componentDidUpdate = (prevProps, prevState) => {
+    const prevQuery = prevState.query;
+    const nextQuery = this.state.query;
+
+    const prevPage = prevState.page;
+    const nextPage = this.state.page;
+
+    if (prevQuery !== nextQuery || prevPage !== nextPage) {
+      this.setState({ status: Status.PENDING });
+
+      imagesApi
+        .fetchImages(nextQuery, nextPage)
+        .then(response => {
+          this.setState(prevState => ({
+            images: [...prevState.images, ...response.hits],
+            status: Status.RESOLVED,
+            showButton:
+              this.state.page < Math.ceil(response.total / 12) ? true : false,
+          }));
+        })
+        .catch(error => {
+          this.setState({ error, status: Status.REJECTED });
+        });
     }
-  }
-  handleSubmit = e => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const query = form.elements.search.value;
-    if (query === this.state.query.trim()) {
-      toast.error('Please provide new word for search');
+  };
+
+  handleFormSubmit = query => {
+    if (query === this.state.query) {
       return;
     }
-    this.setState({
-      allPhotos: [],
-      query: query,
+    // console.log('handleFormSubmit', query);
+    return this.setState({
+      query,
       page: 1,
+      images: [],
+      showButton: false,
+      imageId: null,
+      status: Status.IDLE,
     });
-    e.target.reset();
-  };
-  loadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
   };
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
+  toggleModal = imageId => {
+    this.setState({ imageId });
   };
-  createModalImgId = id => {
-    this.setState({ shownBigImgId: id });
+
+  handleLoadMore = () => {
+    this.setState(prevState => ({ page: prevState.page + 1 }));
   };
 
   render() {
-    const { allPhotos, isLoading, totalPages, page, shownBigImgId } =
-      this.state;
-    return (
-      <>
-        <SearchBar
-          handleSubmit={this.handleSubmit}
-          isSubmitting={isLoading === true}
-        />
+    const { images, status, imageId, showButton, error } = this.state;
 
-        {allPhotos.length > 0 && (
-          <ImageGallery
-            allPhotos={allPhotos}
-            onClick={this.toggleModal}
-            createModalImgId={this.createModalImgId}
-          />
-        )}
-        {isLoading && <Loading isLoading={isLoading} />}
-        {totalPages > 1 && page < totalPages && !isLoading && (
-          <LoadMoreBtn type="button" onClick={this.loadMore}>
-            Load more
-          </LoadMoreBtn>
-        )}
-        {this.state.showModal && (
-          <Modal
-            onClick={this.toggleModal}
-            allPhotos={allPhotos}
-            shownBigImgId={shownBigImgId}
-          />
-        )}
-        <ToastContainer />
-      </>
-    );
+    if (status === Status.IDLE) {
+      return <Searchbar onSubmit={this.handleFormSubmit} />;
+    }
+
+    if (status === Status.PENDING) {
+      return (
+        <>
+          <Searchbar onSubmit={this.handleFormSubmit} />
+          <Loader />;
+        </>
+      );
+    }
+
+    if (status === Status.RESOLVED) {
+      return (
+        <>
+          <div>
+            <Searchbar onSubmit={this.handleFormSubmit} />
+
+            <ImageGallery>
+              <ImageGalleryItem
+                images={images}
+                toggleModal={this.toggleModal}
+              ></ImageGalleryItem>
+            </ImageGallery>
+          </div>
+
+          {showButton && <Button onClick={this.handleLoadMore} />}
+
+          {imageId && (
+            <Modal
+              toggleModal={this.toggleModal}
+              image={images.find(image => image.id === imageId)}
+            />
+          )}
+        </>
+      );
+    }
+
+    if (status === Status.REJECTED) {
+      return alert(error.message);
+    }
   }
 }

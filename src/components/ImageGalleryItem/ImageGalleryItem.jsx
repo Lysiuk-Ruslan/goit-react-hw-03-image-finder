@@ -1,29 +1,29 @@
 import PropTypes from 'prop-types';
-import { ImageItem, GalleryImage } from './ImageGalleryItem.styled';
+import css from './ImageGalleryItem.module.css';
 
-export default function ImageGalleryItem({
-  url,
-  title,
-  onOpen,
-  showModal,
-  id,
-}) {
-  return (
-    <ImageItem onClick={onOpen}>
-      <GalleryImage
-        src={url}
-        alt={title}
-        onClick={() => {
-          showModal(id);
-        }}
-      />
-    </ImageItem>
-  );
+export default function ImageGalleryItem({ images, toggleModal }) {
+  // console.log(images);
+  return images.map(({ id, webformatURL, tags }) => {
+    return (
+      <li className={css.ImageGalleryItem} key={id}>
+        <img
+          src={webformatURL}
+          alt={tags}
+          className={css.ImageGalleryItemImage}
+          onClick={() => toggleModal(id)}
+        />
+      </li>
+    );
+  });
 }
+
 ImageGalleryItem.propTypes = {
-  id: PropTypes.number.isRequired,
-  url: PropTypes.string.isRequired,
-  title: PropTypes.string.isRequired,
-  onOpen: PropTypes.func.isRequired,
-  showModal: PropTypes.func.isRequired,
+  toggleModal: PropTypes.func.isRequired,
+  images: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      webformatURL: PropTypes.string.isRequired,
+      tags: PropTypes.string.isRequired,
+    })
+  ),
 };

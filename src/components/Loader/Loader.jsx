@@ -1,26 +1,17 @@
-import PropTypes from 'prop-types';
-import { MutatingDots } from 'react-loader-spinner';
-import { LoadingBox } from './Loader.styled';
+import { RotatingLines } from 'react-loader-spinner';
+import css from './Loader.module.css';
 
-export const Loading = ({ isLoading }) => {
+export default function Loader() {
   return (
-    <LoadingBox>
-      <MutatingDots
-        height="100"
-        width="100"
-        color="#5576a7"
-        secondaryColor="#434687"
-        radius="12.5"
-        ariaLabel="mutating-dots-loading"
-        wrapperStyle={{}}
-        wrapperClass=""
-        margin="auto"
-        visible={isLoading}
+    <div className={css.Loader}>
+      <RotatingLines
+        strokeColor="rgba(63, 81, 181, 0.8"
+        strokeWidth="5"
+        animationDuration="0.75"
+        width="180"
+        visible={true}
       />
-    </LoadingBox>
+      ;
+    </div>
   );
-};
-
-Loading.propTypes = {
-  isLoading: PropTypes.bool.isRequired,
-};
+}

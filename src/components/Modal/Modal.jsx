@@ -1,51 +1,41 @@
-import PropTypes from 'prop-types';
 import { Component } from 'react';
-import { createPortal } from 'react-dom';
-import { Overlay, ModalBox } from './Modal.styled';
+import css from './Modal.module.css';
 
-const modalRoot = document.querySelector('#modal-root');
+import { createPortal } from 'react-dom';
+
+const modalRef = document.getElementById('modal');
+
 export default class Modal extends Component {
-  state = {
-    largeImageURL: '',
+  componentDidMount = () => {
+    window.addEventListener('keydown', this.handleKeyDownEsc);
   };
-  componentDidMount() {
-    const { allPhotos, shownBigImgId } = this.props;
-    const modalImg = allPhotos.find(({ id }) => id === shownBigImgId);
-    this.setState({ largeImageURL: modalImg.largeImageURL });
-    window.addEventListener('keydown', this.handleKeyDown);
-  }
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.handleKeyDown);
-  }
-  handleKeyDown = e => {
+
+  componentWillUnmount = () => {
+    window.removeEventListener('keydown', this.handleKeyDownEsc);
+  };
+
+  handleKeyDownEsc = e => {
     if (e.code === 'Escape') {
-      this.props.onClick();
+      return this.props.toggleModal(null);
     }
   };
-  handleBackdropClick = evt => {
-    if (evt.currentTarget === evt.target) {
-      this.props.onClick();
+
+  handleBackdropClick = e => {
+    if (e.target === e.currentTarget) {
+      return this.props.toggleModal(null);
     }
   };
+
   render() {
-    const { largeImageURL } = this.state;
+    const { largeImageURL, tags } = this.props.image;
+    // console.log(this.props.image);
     return createPortal(
-      <Overlay onClick={this.handleBackdropClick}>
-        <ModalBox>
-          <img src={largeImageURL} alt="yoursearch" />
-        </ModalBox>
-      </Overlay>,
-      modalRoot
+      <div className={css.Overlay} onClick={this.handleBackdropClick}>
+        <div className={css.Modal}>
+          <img src={largeImageURL} alt={tags} />
+        </div>
+      </div>,
+      modalRef
     );
   }
 }
-
-Modal.propTypes = {
-  allPhotos: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.number.isRequired,
-    })
-  ),
-  onClick: PropTypes.func.isRequired,
-  shownBigImgId: PropTypes.number.isRequired,
-};
